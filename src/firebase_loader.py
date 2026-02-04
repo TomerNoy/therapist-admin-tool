@@ -121,8 +121,11 @@ class FirebaseLoader:
             # Clean data - remove NaN values and convert to JSON-compatible types
             cleaned_data = self._clean_data(therapist_data)
             
-            # Add timestamp
-            cleaned_data['uploadedAt'] = firestore.SERVER_TIMESTAMP
+            # Add timestamps as ISO 8601 strings
+            from datetime import datetime, timezone
+            current_time = datetime.now(timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ')
+            cleaned_data['uploadedAt'] = current_time
+            cleaned_data['updatedAt'] = current_time
             
             # Set data at the specific therapist ID
             therapists_ref.document(therapist_id).set(cleaned_data)
@@ -259,9 +262,19 @@ class FirebaseLoader:
         
         cleaned = {}
         for key, value in data.items():
-            # Skip NaN values
-            if pd.isna(value) or value is None:
+            # Skip NaN values (but not empty lists)
+            if value is None:
                 continue
+            if not isinstance(value, (list, bool)) and pd.isna(value):
+                continue
+            
+            # Explicitly convert latitude and longitude to float
+            if key in ['latitude', 'longitude']:
+                try:
+                    cleaned[key] = float(value)
+                    continue
+                except (ValueError, TypeError):
+                    continue
             
             # Convert numpy types to Python types
             if isinstance(value, (np.integer, np.int64)):
@@ -270,6 +283,9 @@ class FirebaseLoader:
                 cleaned[key] = float(value)
             elif isinstance(value, (np.bool_, bool)):
                 cleaned[key] = bool(value)
+            elif isinstance(value, list):
+                # Handle lists (e.g., otherLanguages)
+                cleaned[key] = [str(item) for item in value if item]
             elif isinstance(value, str):
                 cleaned[key] = str(value)
             else:

@@ -1,0 +1,14 @@
+*.json
+
+# Generated output files (sensitive data)
+src/results.csv
+src/invalid_rows.csv
+src/summary.json
+src/summary.txt
+src/error_log.txt
+
+# Geocoding cache
+src/geocache.json
+
+# Input data (sensitive)
+data/raw_spreadsheet.csv

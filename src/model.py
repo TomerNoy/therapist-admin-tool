@@ -2,12 +2,12 @@ class Therapist:
     required_fields = [
         "createdAt",
         "name",
-        "readPolicy",
+        "tel",
+        "termsOfUseVersion",
         "email",
         "address",
         "bio",
         "specialty",
-        "tel",
         "latitude",
         "longitude",
     ]

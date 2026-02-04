@@ -104,6 +104,15 @@ def validate_row(row_dict, idx, seen_emails, seen_tels, error_log):
         row_dict['isZoom'] = normalize_boolean(row_dict.get('isZoom'), BOOLEAN_TRUE_VALUE)
         row_dict['misradHaBitachon'] = normalize_boolean(row_dict.get('misradHaBitachon'), BOOLEAN_TRUE_VALUE)
 
+        # Convert otherLanguages from comma-separated string to list
+        other_languages = row_dict.get('otherLanguages')
+        if other_languages and isinstance(other_languages, str):
+            # Split by comma, strip whitespace, and filter empty strings
+            row_dict['otherLanguages'] = [lang.strip() for lang in other_languages.split(',') if lang.strip()]
+        elif not other_languages or (isinstance(other_languages, float) and pd.isna(other_languages)):
+            # If None or NaN, set to empty list
+            row_dict['otherLanguages'] = []
+        
         # Address validation
         address, address_flag = validate_address(row_dict.get('address'))
         row_dict['address'] = address
@@ -141,11 +150,11 @@ def validate_row(row_dict, idx, seen_emails, seen_tels, error_log):
         if tel_flag:
             issues.append(tel_flag)
 
-        # ReadPolicy validation
-        read_policy, read_policy_flag = validate_read_policy(row_dict.get('readPolicy'))
-        row_dict['readPolicy'] = read_policy
-        if read_policy_flag:
-            issues.append(read_policy_flag)
+        # Terms of Use validation
+        terms_version, terms_flag = validate_read_policy(row_dict.get('termsOfUseVersion'))
+        row_dict['termsOfUseVersion'] = terms_version
+        if terms_flag:
+            issues.append(terms_flag)
 
         # Check for missing required fields using model (excluding latitude/longitude which are added later)
         # Add placeholder values for lat/lng so they don't show as missing in initial validation
@@ -182,7 +191,7 @@ def categorize_failure(issues):
             failed_columns.add('email')
         if 'name' in issue_lower:
             failed_columns.add('name')
-        if 'readpolicy' in issue_lower or 'read_policy' in issue_lower:
+        if 'readpolicy' in issue_lower or 'read_policy' in issue_lower or 'terms' in issue_lower:
             failed_columns.add('read_policy')
         if 'address' in issue_lower:
             failed_columns.add('address')
@@ -320,8 +329,9 @@ def read_and_map_therapists(csv_path):
             address = validated_row.get('address')
             if address:
                 lat, lng = geocoder.geocode_address(address)
-                validated_row['latitude'] = lat
-                validated_row['longitude'] = lng
+                # Convert to float explicitly
+                validated_row['latitude'] = float(lat) if lat is not None else None
+                validated_row['longitude'] = float(lng) if lng is not None else None
                 
                 # If geocoding failed, mark as invalid
                 if lat is None or lng is None:

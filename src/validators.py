@@ -60,15 +60,15 @@ def validate_email(email):
 
 def validate_read_policy(read_policy):
     """
-    Validates that the read_policy is exactly 'קראתי מאשר.ת'.
-    Returns (read_policy, error_message)
+    Validates that the read_policy is exactly 'קראתי מאשר.ת' and converts to termsOfUseVersion '1.1'.
+    Returns (termsOfUseVersion, error_message)
     """
     if not read_policy or not isinstance(read_policy, str) or not read_policy.strip():
         return None, "Missing read_policy"
     read_policy = read_policy.strip()
     if read_policy == "קראתי מאשר.ת":
-        return read_policy, None
-    return read_policy, f"Invalid read_policy: {read_policy} (must be 'קראתי מאשר.ת')"
+        return "1.1", None
+    return None, f"Invalid read_policy: {read_policy} (must be 'קראתי מאשר.ת')"
 
 
 def validate_name(name):

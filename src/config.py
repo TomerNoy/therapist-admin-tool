@@ -5,7 +5,7 @@ Contains constants, regex patterns, and validation rules.
 
 # Required fields for Therapist model
 REQUIRED_FIELDS = [
-    'createdAt', 'name', 'readPolicy', 'email', 'address', 'bio', 'specialty', 'tel'
+    'createdAt', 'name', 'termsOfUseVersion', 'email', 'address', 'bio', 'specialty', 'tel'
 ]
 
 # Valid values for kupat_holim
@@ -43,7 +43,7 @@ COLUMN_MAPPING = {
     'other_languages': 'otherLanguages',
     'website': 'website',
     'timestamp': 'createdAt',
-    'read_policy': 'readPolicy',
+    'read_policy': 'termsOfUseVersion',
 }
 
 # Output file paths (relative to script directory)
