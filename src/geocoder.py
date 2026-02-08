@@ -41,6 +41,11 @@ class Geocoder:
         self.cache_file = cache_file
         self.cache = self._load_cache()
         
+        # Track current run statistics
+        self.current_run_processed = 0
+        self.current_run_succeeded = 0
+        self.current_run_failed = 0
+        
         print(f"Geocoding cache loaded: {len(self.cache)} addresses cached")
         
         # Initialize geocoding services
@@ -153,9 +158,18 @@ class Geocoder:
             
         original_address = address.strip()
         
+        # Track that we're processing this address in current run
+        self.current_run_processed += 1
+        
         # Check cache first (using original address as key)
         if original_address in self.cache:
-            return self.cache[original_address]
+            cached_result = self.cache[original_address]
+            # Track success/failure for current run stats
+            if cached_result[0] is not None:
+                self.current_run_succeeded += 1
+            else:
+                self.current_run_failed += 1
+            return cached_result
         
         # Clean the address
         cleaned_address = self.clean_address(original_address)
@@ -195,6 +209,7 @@ class Geocoder:
                             lat, lng = location.latitude, location.longitude
                             self.cache[original_address] = (lat, lng)
                             self._save_cache()  # Persist to file immediately
+                            self.current_run_succeeded += 1
                             if service_name != 'Nominatim':
                                 print(f"Geocoded with {service_name}: {original_address}")
                             return lat, lng
@@ -219,21 +234,18 @@ class Geocoder:
         print(f"Geocoding failed for address: {original_address}")
         self.cache[original_address] = (None, None)
         self._save_cache()  # Persist failures too to avoid retrying
+        self.current_run_failed += 1
         return None, None
     
-    def get_cache_stats(self):
+    def get_run_stats(self):
         """
-        Get statistics about the geocoding cache.
+        Get statistics about the current run's geocoding operations.
         
         Returns:
-            Dictionary with cache statistics
+            Dictionary with current run statistics
         """
-        total = len(self.cache)
-        successful = sum(1 for v in self.cache.values() if v[0] is not None)
-        failed = total - successful
-        
         return {
-            'total_addresses': total,
-            'successful_geocodes': successful,
-            'failed_geocodes': failed
+            'total_addresses': self.current_run_processed,
+            'successful_geocodes': self.current_run_succeeded,
+            'failed_geocodes': self.current_run_failed
         }

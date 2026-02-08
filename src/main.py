@@ -336,12 +336,16 @@ def read_and_map_therapists(csv_path):
                 # If geocoding failed, mark as invalid
                 if lat is None or lng is None:
                     print(f"Row {idx+1}: Failed to geocode address: {address}")
-                    issues.append('Failed to extract latitude/longitude from address')
+                    issues.append('Failed to geocode address - could not extract latitude/longitude')
             else:
                 # No address means we can't geocode
                 validated_row['latitude'] = None
                 validated_row['longitude'] = None
                 issues.append('Missing address for geocoding')
+        else:
+            # If there were validation issues, don't geocode
+            validated_row['latitude'] = None
+            validated_row['longitude'] = None
         
         # Categorize as valid or invalid
         if issues:
@@ -349,18 +353,17 @@ def read_and_map_therapists(csv_path):
                 print(f"Row {idx+1} issues: {issues}")
             failed_columns = categorize_failure(issues)
             
-            # Only add to invalid_rows if at least one non-empty field exists
-            non_empty = any(str(v).strip() for k, v in validated_row.items() if k != 'failed_at' and pd.notna(v))
-            if non_empty:
-                invalid_row = {'failed_at': ', '.join(sorted(failed_columns))}
-                invalid_row.update(validated_row)
-                invalid_rows.append(invalid_row)
+            # Add to invalid_rows - geocoding failures are critical
+            invalid_row = {'failed_at': ', '.join(sorted(failed_columns))}
+            invalid_row.update(validated_row)
+            invalid_rows.append(invalid_row)
         else:
+            # Only add to valid_rows if geocoding succeeded
             valid_rows.append(validated_row)
     
-    # Print geocoding statistics
-    geocode_stats = geocoder.get_cache_stats()
-    print(f"\nGeocoding Statistics:")
+    # Print geocoding statistics for current run
+    geocode_stats = geocoder.get_run_stats()
+    print(f"\nGeocoding Statistics (current run):")
     print(f"  Total addresses processed: {geocode_stats['total_addresses']}")
     print(f"  Successfully geocoded: {geocode_stats['successful_geocodes']}")
     print(f"  Failed to geocode: {geocode_stats['failed_geocodes']}")

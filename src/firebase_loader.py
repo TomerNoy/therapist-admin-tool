@@ -138,6 +138,40 @@ class FirebaseLoader:
             print(f"✗ Failed to add therapist: {error_msg}")
             return False, therapist_id, error_msg
     
+    def update_therapist(self, therapist_id, therapist_data):
+        """
+        Update an existing therapist in Firestore.
+        
+        Args:
+            therapist_id: UUID of the therapist to update
+            therapist_data: Dictionary containing updated therapist data
+            
+        Returns:
+            Tuple of (success: bool, therapist_id: str, error_message: str or None)
+        """
+        try:
+            # Get reference to therapists collection
+            therapists_ref = self.db.collection('therapists')
+            
+            # Clean data - remove NaN values and convert to JSON-compatible types
+            cleaned_data = self._clean_data(therapist_data)
+            
+            # Update timestamp
+            from datetime import datetime, timezone
+            current_time = datetime.now(timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ')
+            cleaned_data['updatedAt'] = current_time
+            
+            # Update the document
+            therapists_ref.document(therapist_id).update(cleaned_data)
+            
+            print(f"✓ Updated therapist: {therapist_id} - {cleaned_data.get('name', 'Unknown')}")
+            return True, therapist_id, None
+            
+        except Exception as e:
+            error_msg = str(e)
+            print(f"✗ Failed to update therapist: {error_msg}")
+            return False, therapist_id, error_msg
+    
     def add_therapists_batch(self, therapist_list, skip_duplicate_check=False):
         """
         Add multiple therapists to Firestore.
@@ -287,6 +321,16 @@ class FirebaseLoader:
                 # Handle lists (e.g., otherLanguages)
                 cleaned[key] = [str(item) for item in value if item]
             elif isinstance(value, str):
+                # Check if it's a string representation of a list (from CSV)
+                if key == 'otherLanguages' and value.startswith('[') and value.endswith(']'):
+                    try:
+                        import ast
+                        parsed = ast.literal_eval(value)
+                        if isinstance(parsed, list):
+                            cleaned[key] = [str(item) for item in parsed if item]
+                            continue
+                    except:
+                        pass
                 cleaned[key] = str(value)
             else:
                 # Try to convert to string as fallback

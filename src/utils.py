@@ -2,7 +2,29 @@
 Utility functions for data normalization and helper operations.
 """
 import re
+import hashlib
+import json
 from datetime import datetime
+
+
+def calculate_therapist_hash(data):
+    """
+    Calculate MD5 hash of key therapist fields for change detection.
+    
+    Args:
+        data: Dictionary containing therapist data
+        
+    Returns:
+        String MD5 hash
+    """
+    key_fields = [
+        'name', 'tel', 'email', 'address', 'bio', 'specialty',
+        'otherLanguages', 'website', 'hasWhatsApp', 'isZoom', 
+        'misradHaBitachon', 'kupatHolim', 'termsOfUseVersion'
+    ]
+    hash_data = {k: str(data.get(k, '')) for k in key_fields}
+    hash_string = json.dumps(hash_data, sort_keys=True)
+    return hashlib.md5(hash_string.encode()).hexdigest()
 
 
 def normalize_tel(tel):

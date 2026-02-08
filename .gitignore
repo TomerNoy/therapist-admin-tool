@@ -1,4 +1,23 @@
-*.json
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+
+# Virtual environments
+venv/
+env/
+ENV/
+.venv/
+
+# Environment variables
+.env
+.env.local
+
+# Firebase credentials (SENSITIVE)
+credentials/
+firebase-service-account.json
 
 # Generated output files (sensitive data)
 src/results.csv
@@ -6,9 +25,23 @@ src/invalid_rows.csv
 src/summary.json
 src/summary.txt
 src/error_log.txt
+src/uploaded_therapists.json
 
 # Geocoding cache
 src/geocache.json
 
 # Input data (sensitive)
 data/raw_spreadsheet.csv
+data/raw_spreadsheet_copy.csv
+data/*.csv
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
