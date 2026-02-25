@@ -39,10 +39,11 @@ therapist-admin-tool/
     ├── geocoder.py                   # Address geocoding (ArcGIS + Nominatim)
     ├── firebase_loader.py            # Firebase/Firestore operations
     ├── upload_results_to_firebase.py # Upload script with change tracking
+    ├── upload_fake_therapist.py      # Example script for testing Firebase upload
     ├── generate_tracking.py          # One-time script to backfill tracking file
-    ├── results.csv                   # Validated data ready for upload
-    ├── invalid_rows.csv              # Invalid rows for review
-    ├── summary.json                  # Processing statistics
+    ├── results.csv                   # Validated data ready for upload (gitignored)
+    ├── invalid_rows.csv              # Invalid rows for review (gitignored)
+    ├── summary.json                  # Processing statistics (gitignored)
     └── uploaded_therapists.json      # Tracking file (gitignored)
 ```
 
@@ -337,8 +338,4 @@ When adding new validations:
 
 ## License
 
-[Add license information]
-
-## Contact
-
-[Add contact information]
+MIT License — see [LICENSE](LICENSE) for details.
