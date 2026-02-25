@@ -2,7 +2,8 @@ import re
 from datetime import datetime
 from config import (
     EMAIL_PATTERN, WEBSITE_PATTERN, TEL_PATTERN, MIN_BIO_LENGTH, 
-    MIN_SPECIALTY_LENGTH, MIN_ADDRESS_LENGTH, MIN_TEL_LENGTH, PLACEHOLDER_VALUES, VALID_KUPAT_HOLIM
+    MIN_SPECIALTY_LENGTH, MIN_CITY_LENGTH, MIN_ADDRESS_LENGTH, MIN_TEL_LENGTH,
+    PLACEHOLDER_VALUES, VALID_KUPAT_HOLIM
 )
 from utils import normalize_whitespace, is_placeholder
 
@@ -20,13 +21,28 @@ def validate_website(website):
     return None, None
 
 
+def validate_city(city):
+    """
+    Validates that the city is present and at least 2 characters.
+    City is a required field.
+    Returns (city, error_message)
+    """
+    if not city or not isinstance(city, str) or not city.strip():
+        return None, "Missing city"
+    city = city.strip()
+    if len(city) >= MIN_CITY_LENGTH:
+        return city, None
+    return city, f"Invalid city: {city} (must be at least {MIN_CITY_LENGTH} characters)"
+
+
 def validate_address(address):
     """
-    Validates that the address is more than 1 character.
+    Validates the street address if present.
+    Address is optional — can be empty. If provided, must be at least 2 characters.
     Returns (address, error_message)
     """
     if not address or not isinstance(address, str) or not address.strip():
-        return None, "Missing address"
+        return None, None  # Empty address is valid (optional field)
     address = address.strip()
     if len(address) >= MIN_ADDRESS_LENGTH:
         return address, None

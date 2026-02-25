@@ -48,6 +48,7 @@ def upload_results_to_firebase(dry_run=False):
     # Counters
     new_count = 0
     updated_count = 0
+    coords_updated_count = 0
     skipped_count = 0
     error_count = 0
     errors = []
@@ -74,16 +75,27 @@ def upload_results_to_firebase(dry_run=False):
         # Calculate hash of current data
         current_hash = calculate_therapist_hash(therapist_data)
         
+        # Extract current coordinates
+        current_lat = therapist_data.get('latitude')
+        current_lng = therapist_data.get('longitude')
+        try:
+            current_lat = float(current_lat) if current_lat is not None and not pd.isna(current_lat) else None
+            current_lng = float(current_lng) if current_lng is not None and not pd.isna(current_lng) else None
+        except (ValueError, TypeError):
+            current_lat, current_lng = None, None
+        
         # Check if therapist exists in tracking
         if email in tracking:
             tracked = tracking[email]
             stored_hash = tracked.get('data_hash')
+            stored_lat = tracked.get('latitude')
+            stored_lng = tracked.get('longitude')
             
-            if current_hash == stored_hash:
-                # No changes - skip
-                skipped_count += 1
-            else:
-                # Data changed - update
+            data_changed = current_hash != stored_hash
+            coords_changed = (stored_lat != current_lat or stored_lng != current_lng)
+            
+            if data_changed:
+                # Data fields changed - full update
                 print(f"📝 UPDATE: {name} ({email})")
                 print(f"   Hash changed: {stored_hash[:8]}... → {current_hash[:8]}...")
                 
@@ -91,6 +103,8 @@ def upload_results_to_firebase(dry_run=False):
                     success, _, error = loader.update_therapist(tracked['uuid'], therapist_data)
                     if success:
                         tracking[email]['data_hash'] = current_hash
+                        tracking[email]['latitude'] = current_lat
+                        tracking[email]['longitude'] = current_lng
                         tracking[email]['updated_at'] = current_time
                         updated_count += 1
                     else:
@@ -98,6 +112,31 @@ def upload_results_to_firebase(dry_run=False):
                         error_count += 1
                 else:
                     updated_count += 1
+            elif coords_changed:
+                # Only coordinates changed - targeted update
+                print(f"📍 COORDS UPDATE: {name} ({email})")
+                print(f"   Lat: {stored_lat} → {current_lat}")
+                print(f"   Lng: {stored_lng} → {current_lng}")
+                
+                if not dry_run:
+                    coords_data = {
+                        'latitude': current_lat,
+                        'longitude': current_lng,
+                    }
+                    success, _, error = loader.update_therapist(tracked['uuid'], coords_data)
+                    if success:
+                        tracking[email]['latitude'] = current_lat
+                        tracking[email]['longitude'] = current_lng
+                        tracking[email]['updated_at'] = current_time
+                        coords_updated_count += 1
+                    else:
+                        errors.append(f"{email}: {error}")
+                        error_count += 1
+                else:
+                    coords_updated_count += 1
+            else:
+                # No changes - skip
+                skipped_count += 1
         else:
             # New therapist - upload
             print(f"✨ NEW: {name} ({email})")
@@ -108,6 +147,8 @@ def upload_results_to_firebase(dry_run=False):
                     tracking[email] = {
                         'uuid': therapist_id,
                         'data_hash': current_hash,
+                        'latitude': current_lat,
+                        'longitude': current_lng,
                         'uploaded_at': current_time,
                         'updated_at': current_time
                     }
@@ -117,6 +158,13 @@ def upload_results_to_firebase(dry_run=False):
                     error_count += 1
             else:
                 new_count += 1
+    
+    # Detect orphaned therapists: in Firebase (tracking) but not in current results.csv
+    csv_emails = set(df['email'].dropna().str.strip().str.lower())
+    orphaned = []
+    for tracked_email, tracked_info in tracking.items():
+        if tracked_email.strip().lower() not in csv_emails:
+            orphaned.append((tracked_email, tracked_info))
     
     # Save tracking file (only if not dry run)
     if not dry_run:
@@ -130,10 +178,24 @@ def upload_results_to_firebase(dry_run=False):
     print("="*70)
     print(f"  Total in CSV: {len(df)}")
     print(f"  New uploads: {new_count}")
-    print(f"  Updates: {updated_count}")
+    print(f"  Data updates: {updated_count}")
+    print(f"  Coords-only updates: {coords_updated_count}")
     print(f"  Skipped (no changes): {skipped_count}")
     print(f"  Errors: {error_count}")
     print("="*70)
+    
+    # Flag orphaned therapists
+    if orphaned:
+        print(f"\n⚠️  ORPHANED THERAPISTS ({len(orphaned)}):")
+        print(f"   These exist in Firebase but are missing from the current results.csv.")
+        print(f"   They may have been removed from the spreadsheet or failed validation.")
+        print(f"   Their Firebase documents were NOT updated in this run.\n")
+        for email, info in orphaned:
+            print(f"   ⚠️  {email}")
+            print(f"      UUID: {info.get('uuid', 'unknown')}")
+            print(f"      Uploaded: {info.get('uploaded_at', 'unknown')}")
+            print(f"      Last updated: {info.get('updated_at', 'unknown')}")
+            print()
     
     if dry_run:
         print("\n⚠️  This was a DRY RUN - no changes were made to Firebase")

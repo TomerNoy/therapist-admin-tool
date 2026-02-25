@@ -294,12 +294,15 @@ class FirebaseLoader:
         import pandas as pd
         import numpy as np
         
+        # Fields that must always be included in the update, even when empty
+        always_include = {'address', 'city'}
+        
         cleaned = {}
         for key, value in data.items():
-            # Skip NaN values (but not empty lists)
-            if value is None:
-                continue
-            if not isinstance(value, (list, bool)) and pd.isna(value):
+            # Skip NaN/None values, unless the field must always be included
+            if value is None or (not isinstance(value, (list, bool)) and pd.isna(value)):
+                if key in always_include:
+                    cleaned[key] = ''  # Store as empty string so Firestore updates the field
                 continue
             
             # Explicitly convert latitude and longitude to float

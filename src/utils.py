@@ -18,7 +18,7 @@ def calculate_therapist_hash(data):
         String MD5 hash
     """
     key_fields = [
-        'name', 'tel', 'email', 'address', 'bio', 'specialty',
+        'name', 'tel', 'email', 'city', 'address', 'bio', 'specialty',
         'otherLanguages', 'website', 'hasWhatsApp', 'isZoom', 
         'misradHaBitachon', 'kupatHolim', 'termsOfUseVersion'
     ]

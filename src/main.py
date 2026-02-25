@@ -12,8 +12,8 @@ from collections import defaultdict
 from config import COLUMN_MAPPING, BOOLEAN_TRUE_VALUE, REQUIRED_FIELDS
 from validators import (
     validate_and_transform_timestamp, validate_email, validate_name, 
-    validate_read_policy, validate_tel, validate_address, validate_website, 
-    validate_bio, validate_specialty, validate_kupat_holim
+    validate_read_policy, validate_tel, validate_city, validate_address,
+    validate_website, validate_bio, validate_specialty, validate_kupat_holim
 )
 from model import Therapist
 from utils import normalize_tel, normalize_boolean
@@ -113,7 +113,13 @@ def validate_row(row_dict, idx, seen_emails, seen_tels, error_log):
             # If None or NaN, set to empty list
             row_dict['otherLanguages'] = []
         
-        # Address validation
+        # City validation (required)
+        city, city_flag = validate_city(row_dict.get('city'))
+        row_dict['city'] = city
+        if city_flag:
+            issues.append(city_flag)
+
+        # Address/street validation (optional)
         address, address_flag = validate_address(row_dict.get('address'))
         row_dict['address'] = address
         if address_flag:
@@ -193,6 +199,8 @@ def categorize_failure(issues):
             failed_columns.add('name')
         if 'readpolicy' in issue_lower or 'read_policy' in issue_lower or 'terms' in issue_lower:
             failed_columns.add('read_policy')
+        if 'city' in issue_lower:
+            failed_columns.add('city')
         if 'address' in issue_lower:
             failed_columns.add('address')
         if 'bio' in issue_lower:
@@ -324,24 +332,21 @@ def read_and_map_therapists(csv_path):
         if validated_row is None:
             continue
         
-        # Geocode the address for all rows that passed initial validation
+        # Geocode using structured city + street for all rows that passed initial validation
         if not issues:
-            address = validated_row.get('address')
-            if address:
-                lat, lng = geocoder.geocode_address(address)
-                # Convert to float explicitly
-                validated_row['latitude'] = float(lat) if lat is not None else None
-                validated_row['longitude'] = float(lng) if lng is not None else None
-                
-                # If geocoding failed, mark as invalid
-                if lat is None or lng is None:
-                    print(f"Row {idx+1}: Failed to geocode address: {address}")
-                    issues.append('Failed to geocode address - could not extract latitude/longitude')
-            else:
-                # No address means we can't geocode
-                validated_row['latitude'] = None
-                validated_row['longitude'] = None
-                issues.append('Missing address for geocoding')
+            city = validated_row.get('city')
+            street = validated_row.get('address')  # optional street component
+            
+            lat, lng = geocoder.geocode_location(city, street=street)
+            # Convert to float explicitly
+            validated_row['latitude'] = float(lat) if lat is not None else None
+            validated_row['longitude'] = float(lng) if lng is not None else None
+            
+            # If geocoding failed, mark as invalid
+            if lat is None or lng is None:
+                location_desc = f"{street}, {city}" if street else city
+                print(f"Row {idx+1}: Failed to geocode: {location_desc}")
+                issues.append('Failed to geocode address - could not extract latitude/longitude')
         else:
             # If there were validation issues, don't geocode
             validated_row['latitude'] = None

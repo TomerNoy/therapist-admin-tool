@@ -5,7 +5,7 @@ Contains constants, regex patterns, and validation rules.
 
 # Required fields for Therapist model
 REQUIRED_FIELDS = [
-    'createdAt', 'name', 'termsOfUseVersion', 'email', 'address', 'bio', 'specialty', 'tel'
+    'createdAt', 'name', 'termsOfUseVersion', 'email', 'city', 'bio', 'specialty', 'tel'
 ]
 
 # Valid values for kupat_holim
@@ -17,6 +17,7 @@ BOOLEAN_TRUE_VALUE = "כן"
 # Validation constraints
 MIN_BIO_LENGTH = 10
 MIN_SPECIALTY_LENGTH = 3
+MIN_CITY_LENGTH = 2
 MIN_ADDRESS_LENGTH = 2
 MIN_TEL_LENGTH = 9
 
@@ -35,6 +36,7 @@ COLUMN_MAPPING = {
     'email': 'email',
     'specialty': 'specialty',
     'bio': 'bio',
+    'city': 'city',
     'address': 'address',
     'is_whatsapp': 'hasWhatsApp',
     'is_zoom': 'isZoom',

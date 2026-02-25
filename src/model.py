@@ -5,7 +5,7 @@ class Therapist:
         "tel",
         "termsOfUseVersion",
         "email",
-        "address",
+        "city",
         "bio",
         "specialty",
         "latitude",

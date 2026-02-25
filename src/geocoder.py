@@ -140,10 +140,124 @@ class Geocoder:
         
         return address if address else None
         
+    def geocode_location(self, city, street=None, retry_count=2, retry_delay=1):
+        """
+        Geocode a location using structured city and optional street components.
+        When street is provided, geocodes "street, city" for street-level precision.
+        When only city is provided, geocodes the city directly for city-level precision.
+        
+        Args:
+            city: City name (required)
+            street: Street address (optional - street name, number, etc.)
+            retry_count: Number of retries on timeout per service
+            retry_delay: Delay between retries in seconds
+            
+        Returns:
+            Tuple of (latitude, longitude) or (None, None) if geocoding fails
+        """
+        if not city or not isinstance(city, str) or not city.strip():
+            return None, None
+        
+        city = city.strip()
+        
+        # Clean the street component (if present) through address cleaning logic
+        if street and isinstance(street, str) and street.strip():
+            cleaned_street = self.clean_address(street.strip())
+        else:
+            cleaned_street = None
+        
+        # Build the cache key from structured components
+        if cleaned_street:
+            cache_key = f"{cleaned_street}, {city}"
+        else:
+            cache_key = city
+        
+        # Track that we're processing this location in current run
+        self.current_run_processed += 1
+        
+        # Check cache first
+        if cache_key in self.cache:
+            cached_result = self.cache[cache_key]
+            if cached_result[0] is not None:
+                self.current_run_succeeded += 1
+            else:
+                self.current_run_failed += 1
+            return cached_result
+        
+        # Build geocoding query variants
+        # When we have a street, try "street, city" first for precision
+        # When city only, geocode the city directly
+        for service_name, geolocator in self.services:
+            if cleaned_street:
+                # Street + city: try full address first, then city-only as fallback
+                if service_name == 'ArcGIS':
+                    query_variants = [
+                        f"{cleaned_street}, {city}",
+                        f"{cleaned_street}, {city}, Israel",
+                        f"{city}, Israel",
+                    ]
+                else:  # Nominatim
+                    query_variants = [
+                        f"{cleaned_street}, {city}, Israel",
+                        f"{cleaned_street}, {city}, ישראל",
+                        f"{city}, Israel",
+                        f"{city}, ישראל",
+                    ]
+            else:
+                # City only: geocode city directly
+                if service_name == 'ArcGIS':
+                    query_variants = [
+                        city,
+                        f"{city}, Israel",
+                    ]
+                else:  # Nominatim
+                    query_variants = [
+                        f"{city}, Israel",
+                        f"{city}, ישראל",
+                        city,
+                    ]
+            
+            for variant in query_variants:
+                for attempt in range(retry_count):
+                    try:
+                        if service_name == 'Nominatim':
+                            location = geolocator.geocode(variant, language='he')
+                        else:
+                            location = geolocator.geocode(variant)
+                        
+                        if location:
+                            lat, lng = location.latitude, location.longitude
+                            self.cache[cache_key] = (lat, lng)
+                            self._save_cache()
+                            self.current_run_succeeded += 1
+                            print(f"Geocoded with {service_name}: {cache_key}")
+                            return lat, lng
+                            
+                    except GeocoderTimedOut:
+                        if attempt < retry_count - 1:
+                            time.sleep(retry_delay)
+                            continue
+                            
+                    except GeocoderServiceError:
+                        break
+                        
+                    except Exception as e:
+                        if "rate limit" in str(e).lower():
+                            print(f"{service_name} rate limit reached, trying next service...")
+                            break
+                        break
+        
+        # All services and variants failed
+        print(f"Geocoding failed for: {cache_key}")
+        self.cache[cache_key] = (None, None)
+        self._save_cache()
+        self.current_run_failed += 1
+        return None, None
+
     def geocode_address(self, address, retry_count=2, retry_delay=1):
         """
-        Convert an address string to latitude and longitude.
-        Tries multiple geocoding services (ArcGIS first, then Nominatim) with Hebrew address support.
+        Legacy method: Convert a single address string to latitude and longitude.
+        Prefer geocode_location(city, street) for structured input.
         
         Args:
             address: Address string to geocode
