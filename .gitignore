@@ -15,9 +15,8 @@ ENV/
 .env
 .env.local
 
-# Firebase credentials (SENSITIVE)
+# Credentials (SENSITIVE) - covers firebase-service-account.json, sheets-service-account.json, etc.
 credentials/
-firebase-service-account.json
 
 # Generated output files (sensitive data)
 src/results.csv

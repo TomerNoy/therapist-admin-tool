@@ -26,13 +26,14 @@ therapist-admin-tool/
 ├── VALIDATION_RULES.md               # Detailed validation documentation
 ├── requirements.txt                  # Python dependencies
 ├── credentials/
-│   └── firebase-service-account.json # Firebase credentials (gitignored)
+│   ├── firebase-service-account.json # Firebase credentials (gitignored)
+│   └── sheets-service-account.json   # Google Sheets credentials (gitignored)
 ├── data/
-│   ├── raw_spreadsheet.csv          # Input CSV file
-│   └── geocache.json                 # Geocoding cache (auto-generated)
+│   └── geocache.json                 # Geocoding cache (auto-generated, gitignored)
 └── src/
     ├── main.py                       # Main validation pipeline
     ├── config.py                     # Configuration and constants
+    ├── sheets_reader.py              # Google Sheets fetcher
     ├── validators.py                 # Field validation functions
     ├── model.py                      # Therapist data model
     ├── utils.py                      # Helper functions (includes hash calculation)
@@ -55,18 +56,29 @@ therapist-admin-tool/
 pip install -r requirements.txt
 ```
 
+## Google Sheets Setup
+
+The pipeline fetches data directly from the Google Form response spreadsheet.
+
+### Prerequisites
+
+1. **Enable Google Sheets API** in [Google Cloud Console](https://console.cloud.google.com) for your project
+2. **Create a service account** (or reuse an existing one) and download its JSON key to `credentials/sheets-service-account.json`
+3. **Share the spreadsheet** with the service account email (e.g. `sheets-reader@your-project.iam.gserviceaccount.com`) — Viewer access is sufficient
+4. **Set the spreadsheet ID** in `src/config.py` (`SPREADSHEET_ID`) and the sheet tab's GID (`SHEET_GID`), both found in the spreadsheet URL
+
 ## Usage
 
 ### 1. Process and Validate Data
 
-Run the validation pipeline with geocoding:
+Run the validation pipeline — data is fetched automatically from Google Sheets:
 ```bash
 cd src
 python main.py
 ```
 
 This will:
-- Validate all therapist data from `raw_spreadsheet.csv`
+- Fetch all therapist data directly from Google Sheets
 - Geocode addresses using ArcGIS (with Nominatim fallback)
 - Generate `results.csv` with validated data including latitude/longitude
 - Cache geocoded addresses in `geocache.json` for efficiency
@@ -171,9 +183,15 @@ See [VALIDATION_RULES.md](VALIDATION_RULES.md) for comprehensive documentation o
 
 ## Module Documentation
 
+### sheets_reader.py
+Fetches therapist form responses from Google Sheets:
+- Authenticates via service account (`credentials/sheets-service-account.json`)
+- Opens the spreadsheet by ID and worksheet by GID (both configured in `config.py`)
+- Returns a pandas DataFrame ready for the validation pipeline
+
 ### main.py
 Main validation pipeline with geocoding integration:
-- Reads and validates `raw_spreadsheet.csv`
+- Fetches data from Google Sheets via `sheets_reader.py`
 - Geocodes addresses using ArcGIS geocoder (98.4% success rate)
 - Falls back to Nominatim if ArcGIS fails
 - Caches geocoding results in `geocache.json`
@@ -241,9 +259,9 @@ Helper functions for data transformation and tracking:
 ## Data Flow
 
 ```
-CSV Input (raw_spreadsheet.csv)
+Google Sheets (sheets_reader.py)
     ↓
-Read & Map Columns (config.COLUMN_MAPPING)
+Map Columns (config.COLUMN_MAPPING)
     ↓
 For Each Row:
     ↓
@@ -290,6 +308,10 @@ Update Tracking File:
 3. Generate a service account key:
    - Project Settings → Service Accounts → Generate New Private Key
 4. Save as `credentials/firebase-service-account.json`
+
+### Google Sheets Setup
+
+See [Google Sheets Setup](#google-sheets-setup) above.
 
 ### Geocoding
 
