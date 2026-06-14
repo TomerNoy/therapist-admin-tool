@@ -8,6 +8,9 @@ on:
 jobs:
   sync:
     runs-on: self-hosted
+    env:
+      SPREADSHEET_ID: ${{ secrets.SPREADSHEET_ID }}
+      SHEET_GID: ${{ secrets.SHEET_GID }}
     steps:
       - uses: actions/checkout@v4
 
