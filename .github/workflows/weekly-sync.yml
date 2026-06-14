@@ -14,6 +14,12 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Write credentials
+        run: |
+          mkdir -p credentials
+          echo '${{ secrets.SHEETS_SERVICE_ACCOUNT_JSON }}' > credentials/sheets-service-account.json
+          echo '${{ secrets.FIREBASE_SERVICE_ACCOUNT_JSON }}' > credentials/firebase-service-account.json
+
       - name: Install dependencies
         run: uv sync
 
