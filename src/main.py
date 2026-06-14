@@ -18,15 +18,27 @@ from validators import (
 from model import Therapist
 from utils import normalize_tel, normalize_boolean
 from geocoder import Geocoder
+from sheets_reader import fetch_spreadsheet_as_dataframe
+
+
+def preprocess_dataframe(df):
+    """
+    Apply column cleanup and renaming to a DataFrame.
+    Drops ignored/empty columns and renames via COLUMN_MAPPING.
+    """
+    df = df[[col for col in df.columns if not col.startswith('ignored') and not df[col].isnull().all()]]
+    df = df.rename(columns={k: v for k, v in COLUMN_MAPPING.items() if k in df.columns})
+    print("Mapped DataFrame columns:", list(df.columns))
+    return df
 
 
 def read_csv(csv_path):
     """
     Read and preprocess CSV file.
-    
+
     Args:
         csv_path: Path to CSV file
-        
+
     Returns:
         pandas DataFrame with mapped columns
     """
@@ -37,16 +49,7 @@ def read_csv(csv_path):
         print(f"Trying absolute path: {os.path.abspath(abs_path)}")
         df = pd.read_csv(abs_path)
 
-    # Drop columns that start with 'ignored' or are completely empty
-    df = df[[col for col in df.columns if not col.startswith('ignored') and not df[col].isnull().all()]]
-
-    # Rename columns according to mapping
-    df = df.rename(columns={k: v for k, v in COLUMN_MAPPING.items() if k in df.columns})
-
-    print("Mapped DataFrame columns:", list(df.columns))
-    print(df.head())
-    
-    return df
+    return preprocess_dataframe(df)
 
 
 def validate_row(row_dict, idx, seen_emails, seen_tels, error_log):
@@ -296,15 +299,18 @@ def write_outputs(valid_rows, invalid_rows, df_columns, script_dir):
     print(f"{'='*50}\n")
 
 
-def read_and_map_therapists(csv_path):
+def read_and_map_therapists(csv_path=None, df=None):
     """
-    Main processing function: read CSV, validate rows, write outputs.
-    
+    Main processing function: read CSV or Google Sheets, validate rows, write outputs.
+
     Args:
-        csv_path: Path to input CSV file
+        csv_path: Path to input CSV file (used if df is not provided)
+        df: Pre-fetched pandas DataFrame (takes priority over csv_path)
     """
-    # Read CSV
-    df = read_csv(csv_path)
+    if df is None:
+        df = read_csv(csv_path)
+    else:
+        df = preprocess_dataframe(df)
     
     # Initialize tracking variables
     invalid_rows = []
@@ -388,4 +394,5 @@ def read_and_map_therapists(csv_path):
 
 
 if __name__ == "__main__":
-    read_and_map_therapists("../data/raw_spreadsheet.csv")
+    df = fetch_spreadsheet_as_dataframe()
+    read_and_map_therapists(df=df)

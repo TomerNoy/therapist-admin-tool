@@ -3,6 +3,11 @@ Configuration file for therapist admin tool.
 Contains constants, regex patterns, and validation rules.
 """
 
+import os
+from dotenv import load_dotenv
+
+load_dotenv(os.path.join(os.path.dirname(__file__), '../.env'))
+
 # Required fields for Therapist model
 REQUIRED_FIELDS = [
     'createdAt', 'name', 'termsOfUseVersion', 'email', 'city', 'bio', 'specialty', 'tel'
@@ -53,3 +58,8 @@ INVALID_ROWS_FILENAME = 'invalid_rows'
 RESULTS_FILENAME = 'results'
 SUMMARY_FILENAME = 'summary'
 ERROR_LOG_FILENAME = 'error_log.txt'
+
+# Google Sheets integration
+SPREADSHEET_ID = os.environ["SPREADSHEET_ID"]
+SHEET_GID = int(os.environ["SHEET_GID"])
+SHEETS_CREDENTIALS_PATH = os.path.join(os.path.dirname(__file__), '../credentials/sheets-service-account.json')
