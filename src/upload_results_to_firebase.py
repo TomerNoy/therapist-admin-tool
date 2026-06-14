@@ -68,7 +68,7 @@ def upload_results_to_firebase(dry_run=False):
         name = therapist_data.get('name', 'Unknown')
         
         if not email:
-            print(f"⚠ Row {idx+1}: Missing email, skipping")
+            print(f"Row {idx+1}: Missing email, skipping")
             error_count += 1
             continue
         
@@ -95,10 +95,6 @@ def upload_results_to_firebase(dry_run=False):
             coords_changed = (stored_lat != current_lat or stored_lng != current_lng)
             
             if data_changed:
-                # Data fields changed - full update
-                print(f"📝 UPDATE: {name} ({email})")
-                print(f"   Hash changed: {stored_hash[:8]}... → {current_hash[:8]}...")
-                
                 if not dry_run:
                     success, _, error = loader.update_therapist(tracked['uuid'], therapist_data)
                     if success:
@@ -108,16 +104,11 @@ def upload_results_to_firebase(dry_run=False):
                         tracking[email]['updated_at'] = current_time
                         updated_count += 1
                     else:
-                        errors.append(f"{email}: {error}")
+                        errors.append(f"Row {idx+1}: {error}")
                         error_count += 1
                 else:
                     updated_count += 1
             elif coords_changed:
-                # Only coordinates changed - targeted update
-                print(f"📍 COORDS UPDATE: {name} ({email})")
-                print(f"   Lat: {stored_lat} → {current_lat}")
-                print(f"   Lng: {stored_lng} → {current_lng}")
-                
                 if not dry_run:
                     coords_data = {
                         'latitude': current_lat,
@@ -130,7 +121,7 @@ def upload_results_to_firebase(dry_run=False):
                         tracking[email]['updated_at'] = current_time
                         coords_updated_count += 1
                     else:
-                        errors.append(f"{email}: {error}")
+                        errors.append(f"Row {idx+1}: {error}")
                         error_count += 1
                 else:
                     coords_updated_count += 1
@@ -138,9 +129,6 @@ def upload_results_to_firebase(dry_run=False):
                 # No changes - skip
                 skipped_count += 1
         else:
-            # New therapist - upload
-            print(f"✨ NEW: {name} ({email})")
-            
             if not dry_run:
                 success, therapist_id, error = loader.add_therapist(therapist_data, skip_duplicate_check=True)
                 if success:
@@ -154,7 +142,7 @@ def upload_results_to_firebase(dry_run=False):
                     }
                     new_count += 1
                 else:
-                    errors.append(f"{email}: {error}")
+                    errors.append(f"Row {idx+1}: {error}")
                     error_count += 1
             else:
                 new_count += 1
@@ -186,16 +174,10 @@ def upload_results_to_firebase(dry_run=False):
     
     # Flag orphaned therapists
     if orphaned:
-        print(f"\n⚠️  ORPHANED THERAPISTS ({len(orphaned)}):")
+        print(f"\nORPHANED THERAPISTS ({len(orphaned)}):")
         print(f"   These exist in Firebase but are missing from the current results.csv.")
         print(f"   They may have been removed from the spreadsheet or failed validation.")
-        print(f"   Their Firebase documents were NOT updated in this run.\n")
-        for email, info in orphaned:
-            print(f"   ⚠️  {email}")
-            print(f"      UUID: {info.get('uuid', 'unknown')}")
-            print(f"      Uploaded: {info.get('uploaded_at', 'unknown')}")
-            print(f"      Last updated: {info.get('updated_at', 'unknown')}")
-            print()
+        print(f"   Their Firebase documents were NOT updated in this run.")
     
     if dry_run:
         print("\n⚠️  This was a DRY RUN - no changes were made to Firebase")
