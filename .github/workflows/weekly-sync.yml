@@ -14,5 +14,8 @@ jobs:
       - name: Install dependencies
         run: uv sync
 
-      - name: Run sync
+      - name: Process spreadsheet
         run: uv run python src/main.py
+
+      - name: Upload to Firebase
+        run: uv run python src/upload_results_to_firebase.py
